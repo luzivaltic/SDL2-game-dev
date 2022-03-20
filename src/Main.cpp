@@ -17,6 +17,7 @@ struct flyObject {
 //Screen dimension constants
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 400;
+const int GAME_LIMIT_WIDTH = 2000;
 
 Mix_Music* takeOver = NULL;
 Mix_Chunk* burnIt = NULL;
@@ -75,11 +76,18 @@ int main( int argc, char* args[] )
     
     // const value
     const int TOTAL_FRAME = 4;
+    
     const int FRAME_WIDTH = 64;
     const int FRAME_HEIGHT = 205;
+    const int DST_FRAME_WIDTH = 32;
+    const int DST_FRAME_HEIGHT = 100;
+
     const int DIRT_WIDTH = 32;
     const int DIRT_HEIGHT = 64;
     const int GROUND_HEIGHT = SCREEN_HEIGHT - DIRT_HEIGHT;
+
+    const int FIRE_WIDTH = DST_FRAME_WIDTH /2;
+    const int FIRE_HEIGHT = FIRE_WIDTH;
 
     const int LEFT_KEY = 0;
     const int RIGHT_KEY = 1;
@@ -92,7 +100,7 @@ int main( int argc, char* args[] )
     for(int i = 0 ;i < TOTAL_FRAME; i++)
         srcRec[i] = { i * FRAME_WIDTH , 0, FRAME_WIDTH, FRAME_HEIGHT };
 
-    SDL_Rect dstRec = { 0 , GROUND_HEIGHT - FRAME_HEIGHT , FRAME_WIDTH , FRAME_HEIGHT };
+    SDL_Rect dstRec = { 0 , GROUND_HEIGHT - DST_FRAME_HEIGHT , DST_FRAME_WIDTH , DST_FRAME_HEIGHT };
     Vector2d curJump;
 
     int curFrame = 0;
@@ -101,9 +109,10 @@ int main( int argc, char* args[] )
     SDL_Rect fillRect = { 0 , 0 , SCREEN_WIDTH , SCREEN_HEIGHT };
 
     // firebolt
-    const int FIRE_WIDTH = 32;
-    const int FIRE_HEIGHT = 32;
     vector<flyObject> fireRect;
+
+    // fire raint
+    vector<SDL_Rect> fireRain;
 
     // image prepare
     SDL_Surface* fooSur = IMG_Load("assets/foo_animation.png");
@@ -115,11 +124,13 @@ int main( int argc, char* args[] )
     SDL_Texture* foo = SDL_CreateTextureFromSurface( window.getRenderer() , fooSur );
     SDL_Texture* fire = SDL_CreateTextureFromSurface( window.getRenderer() , fireSur );
 
+    int stand_still = 0;
+
     while( gameRunning ) {
         frameStart = SDL_GetTicks();
-        
+        int cur_pos = dstRec.x;       
         while( SDL_PollEvent( &event ) ){
-            flyObject newObject;
+            
             if( event.type == SDL_QUIT )
                 gameRunning = false;
             else if( event.type == SDL_KEYDOWN ) {
@@ -132,13 +143,7 @@ int main( int argc, char* args[] )
                     board_state[RIGHT_KEY] = 1;
                     break;
                 case SDLK_f:
-                    int curDir;
-                    if( curFlip == SDL_FLIP_HORIZONTAL )
-                        curDir = 1;
-                    else curDir = -1;
-                    newObject.Object = { dstRec.x + FRAME_WIDTH / 2 , dstRec.y + FRAME_HEIGHT / 4 , FIRE_WIDTH , FIRE_HEIGHT };
-                    newObject.dir = curDir;
-                    fireRect.push_back( newObject );
+                    board_state[FIRE_KEY] = 1;
                     break;
                 case SDLK_SPACE:
                     board_state[SPACE_KEY] = 1;
@@ -173,32 +178,63 @@ int main( int argc, char* args[] )
         if( board_state[LEFT_KEY] ) {
             curFrame = ( curFrame + 1 ) % TOTAL_FRAME;
             curFlip = SDL_FLIP_NONE;
-            dstRec.x = max( 0 , dstRec.x -  FRAME_WIDTH / 4 );
+            dstRec.x = max( 0 , dstRec.x -  DST_FRAME_WIDTH / 4 );
         }    
 
         if( board_state[RIGHT_KEY] ) {
             curFrame = ( curFrame + 1 ) % TOTAL_FRAME;
             curFlip = SDL_FLIP_HORIZONTAL;
-            dstRec.x = min( SCREEN_WIDTH - FRAME_WIDTH , dstRec.x + FRAME_WIDTH / 4);
-        }   
+            dstRec.x = min( GAME_LIMIT_WIDTH , dstRec.x + DST_FRAME_WIDTH / 4);
+        }  
 
         if( board_state[SPACE_KEY] ) {
             if( curJump.getHeight() == 0 )
                 curJump.newJump( 300 , 700 );
         }
+
+        SDL_Rect new_dstRec = { min( dstRec.x , ( SCREEN_WIDTH - DST_FRAME_WIDTH ) / 2 ) , dstRec.y , dstRec.w , dstRec.h };
+
+        if( GAME_LIMIT_WIDTH - dstRec.x <= ( SCREEN_WIDTH - DST_FRAME_WIDTH ) / 2 )
+            new_dstRec.x = SCREEN_WIDTH - DST_FRAME_WIDTH - ( GAME_LIMIT_WIDTH - dstRec.x ); 
+
+        if( cur_pos == dstRec.x ){
+            if( !stand_still )
+                stand_still = SDL_GetTicks();
+            else if( SDL_GetTicks() - stand_still >= 500 ) {
+                curFrame = 1;
+                stand_still = 0;
+            }
+        }
+
+        if( board_state[FIRE_KEY] ) {
+            flyObject newObject;
+            int curDir;
+            if( curFlip == SDL_FLIP_HORIZONTAL )
+                curDir = 1;
+            else curDir = -1;
+            newObject.Object = { new_dstRec.x + DST_FRAME_WIDTH / 2 , new_dstRec.y + DST_FRAME_HEIGHT / 4 , FIRE_WIDTH , FIRE_HEIGHT };
+            newObject.dir = curDir;
+            fireRect.push_back( newObject );
+            board_state[FIRE_KEY] = 0;
+        }
         
         // jump
-        dstRec.y = GROUND_HEIGHT - FRAME_HEIGHT - curJump.getHeight();
+        if( curJump.getHeight() ) curFrame = 1;
+        dstRec.y = GROUND_HEIGHT - DST_FRAME_HEIGHT - curJump.getHeight();
 
         // fill rect
         SDL_SetRenderDrawColor( window.getRenderer() , 32 , 33 , 36 , 255 );
         SDL_RenderFillRect( window.getRenderer() , &fillRect );
 
-        SDL_RenderCopyEx( window.getRenderer() , foo , &srcRec[curFrame] , &dstRec , deg , NULL , curFlip );
+        SDL_RenderCopyEx( window.getRenderer() , foo , &srcRec[curFrame] , &new_dstRec , deg , NULL , curFlip );
 
         // render dirt
-        for(int i = 0 ;i < SCREEN_WIDTH ; i+= DIRT_WIDTH){
-            SDL_Rect dirtDst = { i , SCREEN_HEIGHT - DIRT_HEIGHT , DIRT_WIDTH , DIRT_HEIGHT };
+        
+        int zero_point = max( 0 , dstRec.x - ( SCREEN_WIDTH - DST_FRAME_WIDTH ) / 2 );
+        zero_point = min( zero_point , GAME_LIMIT_WIDTH - SCREEN_WIDTH );
+
+        for(int i = 0 ;i < GAME_LIMIT_WIDTH ; i+= DIRT_WIDTH){
+            SDL_Rect dirtDst = { i - zero_point , SCREEN_HEIGHT - DIRT_HEIGHT , DIRT_WIDTH , DIRT_HEIGHT };
             SDL_RenderCopy( window.getRenderer() , dirt , NULL , &dirtDst );
         }
 
@@ -211,12 +247,27 @@ int main( int argc, char* args[] )
         if( !fireRect.empty() && ( fireRect[0].Object.x > SCREEN_WIDTH || fireRect[0].Object.x < 0 ) )
             fireRect.erase( fireRect.begin() );
 
+        // fire rain
+        
+        SDL_Rect newFire = { rand() % GAME_LIMIT_WIDTH , 0 , 16 , 16 };
+        fireRain.push_back( newFire );
+        
+        for( SDL_Rect &fireBolt : fireRain ){
+            fireBolt.y += 8;
+            SDL_Rect curFire = fireBolt;
+            curFire.x -= zero_point;
+            SDL_RenderCopy( window.getRenderer() , fire , NULL , &curFire );    
+        }
+
+        if( !fireRain.empty() && ( fireRain[0].y > SCREEN_HEIGHT ) )
+            fireRain.erase( fireRain.begin() );
+
         // limit frame time
         frameTime = SDL_GetTicks() - frameStart;
         if( frameTime < frameDelay )
             SDL_Delay( frameDelay - frameTime );
         //
-        
+
         window.display();
     }
 
