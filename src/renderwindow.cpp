@@ -2,15 +2,16 @@
 #include<SDL_image.h>
 #include<iostream>
 #include "RenderWindow.hpp"
-#include "Entity.hpp"
+#include "Globals.hpp"
+#include "Value.hpp"
 
 using namespace std;
 
-RenderWindow::RenderWindow( const char* title , int width , int height )
+RenderWindow::RenderWindow( const char* title , int p_width , int p_height )
     :window(NULL) , renderer(NULL)
 {
-    window = SDL_CreateWindow( title , SDL_WINDOWPOS_CENTERED , SDL_WINDOWPOS_CENTERED , width , height , 
-        SDL_WINDOW_SHOWN );   
+    window = SDL_CreateWindow( title , SDL_WINDOWPOS_CENTERED , SDL_WINDOWPOS_CENTERED , p_width , p_height , 
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE );
 
     if( window == NULL )
         cout << "window failed , Error: " << SDL_GetError() << endl;
@@ -39,30 +40,20 @@ void RenderWindow::clear()
     SDL_RenderClear(renderer);
 }
 
-void RenderWindow::render( Entity& entity )
-{
-    SDL_Rect src;
-    src.x = entity.getCurrentFrame().x;
-    src.y = entity.getCurrentFrame().y;
-    src.w = entity.getCurrentFrame().w;
-    src.h = entity.getCurrentFrame().h;
-
-    SDL_Rect dst;
-    dst.x = entity.getX() * 4;
-    dst.y = entity.getY() * 4;
-    dst.w = entity.getCurrentFrame().w * 4;
-    dst.h = entity.getCurrentFrame().w * 4;
-
-    SDL_RenderCopy( renderer, entity.getTex() , NULL , &dst );
-}
-
 void RenderWindow::display()
 {
     SDL_RenderPresent(renderer);
 }
 
+void RenderWindow::window_size_change(int width , int height)
+{
+    SCREEN_WIDTH = width;
+    SCREEN_HEIGHT = height;
+    GROUND_HEIGHT = SCREEN_HEIGHT - DIRT_HEIGHT;
+    SDL_SetWindowSize( window , width , height );
+    SDL_SetWindowPosition( window , SDL_WINDOWPOS_CENTERED , SDL_WINDOWPOS_CENTERED );
+}
+
 SDL_Renderer* RenderWindow::getRenderer() {
     return renderer;
 }
-
-

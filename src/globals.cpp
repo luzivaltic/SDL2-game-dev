@@ -1,0 +1,7 @@
+#include "Globals.hpp"
+#include "Value.hpp"
+
+int SCREEN_WIDTH = 1000;
+int SCREEN_HEIGHT = 700;
+int GROUND_HEIGHT = SCREEN_HEIGHT - DIRT_HEIGHT;
+int MENU_SCREEN_WIDTH = 525 , MENU_SCREEN_HEIGHT = 700;
