@@ -1,7 +1,8 @@
 #pragma once
 #include<SDL.h>
 #include<SDL_image.h>
-#include "const_value.hpp"
+#include "Value.hpp"
+#include "Globals.hpp"
 
 class Character {
 public:
@@ -15,7 +16,7 @@ public:
     void iddle_next_frame();
     void restart_iddle();
 
-    void walk( SDL_Renderer* renderer , SDL_Texture* animation , SDL_Rect* srcRec , int dir );
+    void walk( SDL_Renderer* renderer , SDL_Texture* animation , SDL_Rect* srcRec );
     void restart_walk();
     void setFlip( SDL_RendererFlip curFlip ) { flip = curFlip; }
 
@@ -23,7 +24,8 @@ public:
     void Jump( SDL_Renderer* renderer , SDL_Texture* animation , SDL_Rect* srcRec );
     void startJump( int initital_speed , int gravity );
     void jump_next_frame();
-    bool on_ground();
+    
+    bool on_ground = true;
 
     // attack
     void attack( SDL_Renderer* renderer , SDL_Texture* animation , SDL_Rect* srcRec );
@@ -37,16 +39,23 @@ public:
     bool is_dead() { return died;}
     bool is_finished() { return finished_animation;}
 
-    int getX() { return x; }
+    // restart
+    void restart_character();
+
     SDL_Rect getRec() { return SDL_Rect{ x , y , w , h }; }
     SDL_RendererFlip getFlip() {return flip;}
     int get_attack_frame() { return attack_frame; }
+    
+    int getY() { return y;}
+    int getX() { return x; }
+    void setX( int pos) { x = pos;}
+    void set_ground() { y = GROUND_HEIGHT - h;}
 
 private:
     int x , y , w , h;
     int scale , speed , character_frame_rate;
     SDL_RendererFlip flip = SDL_FLIP_NONE;
-    bool is_snake , died = false , finished_animation = false;
+    bool is_snake;
 
     // iddle
     int iddle_total_frame;
@@ -63,6 +72,7 @@ private:
     int jump_frame = 0;
     int jump_start_time = 0;
     int jump_speed = 0 , gravity = 0;
+    bool jumping = false;
 
     // attack
     int attack_max_frame = 6;
@@ -74,4 +84,5 @@ private:
     // death
     int death_frame = 0 , death_max_frame = 6;
     int death_time;
+    bool died = false , finished_animation = false;
 };
